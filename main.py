@@ -1,7 +1,9 @@
 # Source: https://github.com/pathunstrom/game-tutorial
 
+from os import path
+
 from ppb import GameEngine, BaseScene
-from pygame import image
+from pygame import image, mouse
 from pygame.sprite import DirtySprite
 
 
@@ -14,6 +16,34 @@ class Player(DirtySprite):
         self.rect = self.image.get_rect()
         self.scene = scene
 
+    def update(self, time_delta):
+        self.rect.center = mouse.get_pos()
+        self.dirty = True
+
+    def simulate(self, time_delta):
+        mouse_x, mouse_y = mouse.get_pos()
+        diff_x = max(min(mouse_x - self.rect.centerx, 5), -5)
+        diff_y = max(min(mouse_y - self.rect.centery, 5), -5)
+        self.rect.centerx += diff_x
+        self.rect.centery += diff_y
+        if diff_x or diff_y:
+            self.dirty = True
+
+
+class Laser(DirtySprite):
+
+    def __init__(self, scene):
+        super().__init__(scene.groups["lasers"])
+        b_image = image.load(path.join(path.dirname(__file__), "laser.png"))
+        self.image = b_image
+        self.rect = self.image.get_rect()
+        self.rect.bottom = 750
+        self.scene = scene
+
+    def update(self, time_delta):
+        self.rect.centery += -10
+        self.dirty = True
+
 
 class Game(BaseScene):
 
@@ -21,12 +51,14 @@ class Game(BaseScene):
         super().__init__(engine=engine,
                          background_color=background_color,
                          **kwargs)
-
+        engine.display.fill(background_color)
+        Player(self)
+        Laser(self)
 
 
 # Main loop to keep the GUI running (60 times/sec)
 def main():
-    with GameEngine(Game, resolution=(400, 600)) as engine:
+    with GameEngine(Game, resolution=(500, 750)) as engine:
         engine.run()
 
 if __name__ == "__main__":
