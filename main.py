@@ -4,7 +4,7 @@ from os import path
 
 from ppb import GameEngine, BaseScene
 from pygame import image, mouse
-from pygame.sprite import DirtySprite
+from pygame.sprite import DirtySprite, groupcollide
 
 
 class Player(DirtySprite):
@@ -15,10 +15,8 @@ class Player(DirtySprite):
                                           "player.png"))
         self.rect = self.image.get_rect()
         self.scene = scene
-
-    def update(self, time_delta):
-        self.rect.center = mouse.get_pos()
-        self.dirty = True
+        self.laser_limiter = 0.25
+        self.laser_delay = 0
 
     def simulate(self, time_delta):
         mouse_x, mouse_y = mouse.get_pos()
@@ -26,18 +24,22 @@ class Player(DirtySprite):
         diff_y = max(min(mouse_y - self.rect.centery, 5), -5)
         self.rect.centerx += diff_x
         self.rect.centery += diff_y
-        if diff_x or diff_y:
-            self.dirty = True
+
+        pressed = mouse.get_pressed()
+        if pressed[0] and (self.laser_delay >= self.laser_limiter):
+            Laser(self.scene, self.rect.midtop)
+            self.laser_delay = 0
+        self.laser_delay += time_delta
 
 
 class Laser(DirtySprite):
 
-    def __init__(self, scene):
+    def __init__(self, scene, position):
         super().__init__(scene.groups["lasers"])
         b_image = image.load(path.join(path.dirname(__file__), "laser.png"))
         self.image = b_image
         self.rect = self.image.get_rect()
-        self.rect.bottom = 750
+        self.rect.midbottom = position
         self.scene = scene
 
     def update(self, time_delta):
@@ -53,7 +55,32 @@ class Game(BaseScene):
                          **kwargs)
         engine.display.fill(background_color)
         Player(self)
-        Laser(self)
+        Laser(self, (300, 400)).kill()
+        Enemy(self, 200)
+
+    def simulate(self, time_delta):
+        super().simulate(time_delta)
+        player = self.groups["player"]
+        lasers = self.groups["lasers"]
+        enemies = self.groups["enemy"]
+        groupcollide(player, enemies, True, True)
+        groupcollide(enemies, lasers, True, True)
+
+
+class Enemy(DirtySprite):
+
+    def __init__(self, scene, x_position):
+        super().__init__(scene.groups["enemy"])
+        p_image = image.load(path.join(path.dirname(__file__), "enemy.png"))
+        self.image = p_image
+        self.rect = self.image.get_rect()
+        self.rect.bottom = 0
+        self.rect.centerx = x_position
+        self.scene = scene
+
+    def update(self, time_delta):
+        self.rect.centery += 3
+        self.dirty = True
 
 
 # Main loop to keep the GUI running (60 times/sec)
