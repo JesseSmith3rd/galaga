@@ -8,4 +8,4 @@
 
 ## Play Instructions
 1. Move mouse or cursor to move player
-2. Click for fire lasers
+2. Click to fire lasers
